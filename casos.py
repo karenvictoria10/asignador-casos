@@ -2,12 +2,13 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import requests
+import time
 
 # ----------- CONFIG -----------
 
 SHEET_URL = "https://docs.google.com/spreadsheets/d/15oJHLXONtcGoudA2LcmFi4bNMwGK8Dm2zGyV8fv5V-4/export?format=csv"
 
-API_URL = "https://script.google.com/macros/s/AKfycbyTomfrK8h4C3TKMFGrFWxrsdw7uQIVkXt_NT6s-AKhto_ZD_WfaPM1COe0TlEjj_huaQ/exec"
+API_URL = "https://script.google.com/macros/s/AKfycbzqlk57Uwxo8GTW1XMFrZoAxIOczayYlO02TcV2tdaSoMpGtVu2h-kMB0SPAK1HxcsEJw/exec"
 
 pesos = {"A": 1, "B": 2, "C": 3}
 personas = ["Fany", "Paola", "Valeria"]
@@ -22,10 +23,20 @@ def cargar_datos():
         return pd.DataFrame(columns=["ID", "Tipo", "Puntos", "Asignado a", "Fecha", "Estado"])
 
 def guardar_caso(nuevo):
-    requests.post(API_URL, json=nuevo)
+    try:
+        r = requests.post(API_URL, json=nuevo)
+        if r.status_code != 200:
+            st.error("❌ Error al guardar en Google Sheets")
+    except Exception as e:
+        st.error(f"❌ Error de conexión: {e}")
 
 def cerrar_caso(id_caso):
-    requests.post(API_URL, json={"cerrar": id_caso})
+    try:
+        r = requests.post(API_URL, json={"cerrar": id_caso})
+        if r.status_code != 200:
+            st.error("❌ Error al cerrar caso")
+    except Exception as e:
+        st.error(f"❌ Error: {e}")
 
 # ----------- LOGIN -----------
 
@@ -46,7 +57,6 @@ st.set_page_config(page_title="Asignador de Casos", layout="wide")
 
 st.title("📊 Asignador Inteligente de Casos")
 
-# 🔥 Cargar datos SIEMPRE actualizado
 df = cargar_datos()
 
 # ----------- ASIGNAR -----------
@@ -76,7 +86,9 @@ if st.button("Asignar caso"):
 
     guardar_caso(nuevo)
 
-    st.cache_data.clear()  # 🔥 fuerza refresco
+    time.sleep(2)  # 🔥 espera a Google
+
+    st.cache_data.clear()
 
     st.session_state["ultimo_asignado"] = asignado
     st.rerun()
@@ -101,7 +113,9 @@ if not df.empty:
         if st.button("Cerrar caso"):
             cerrar_caso(id_caso)
 
-            st.cache_data.clear()  # 🔥 refresco
+            time.sleep(2)  # 🔥 espera
+
+            st.cache_data.clear()
 
             st.session_state["cerrado"] = id_caso
             st.rerun()
