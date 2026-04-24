@@ -80,7 +80,7 @@ if st.button("Asignar caso"):
         "Tipo": tipo,
         "Puntos": pesos[tipo],
         "Asignado a": asignado,
-        "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "Fecha": datetime.now().strftime("%Y-%m-%d"),
         "Estado": "Abierto"
     }
 
