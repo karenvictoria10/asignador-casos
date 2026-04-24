@@ -86,7 +86,7 @@ if st.button("Asignar caso"):
 
     guardar_caso(nuevo)
 
-    time.sleep(2)  # 🔥 espera a Google
+    time.sleep(1)  # 🔥 espera a Google
 
     st.cache_data.clear()
 
