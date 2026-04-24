@@ -5,9 +5,9 @@ import requests
 
 # ----------- CONFIG -----------
 
-API_URL = "https://script.google.com/macros/s/AKfycbyTomfrK8h4C3TKMFGrFWxrsdw7uQIVkXt_NT6s-AKhto_ZD_WfaPM1COe0TlEjj_huaQ/exec"
-
 SHEET_URL = "https://docs.google.com/spreadsheets/d/15oJHLXONtcGoudA2LcmFi4bNMwGK8Dm2zGyV8fv5V-4/export?format=csv"
+
+API_URL = "https://script.google.com/macros/s/AKfycbyTomfrK8h4C3TKMFGrFWxrsdw7uQIVkXt_NT6s-AKhto_ZD_WfaPM1COe0TlEjj_huaQ/exec"
 
 pesos = {"A": 1, "B": 2, "C": 3}
 personas = ["Fany", "Paola", "Valeria"]
@@ -21,39 +21,11 @@ def cargar_datos():
     except:
         return pd.DataFrame(columns=["ID", "Tipo", "Puntos", "Asignado a", "Fecha", "Estado"])
 
-def guardar_en_sheets(nuevo):
-    requests.post(API_URL, json={
-        "ID": nuevo["ID"],
-        "Tipo": nuevo["Tipo"],
-        "Puntos": nuevo["Puntos"],
-        "Asignado a": nuevo["Asignado a"],
-        "Fecha": str(nuevo["Fecha"]),
-        "Estado": nuevo["Estado"]
-    })
+def guardar_caso(nuevo):
+    requests.post(API_URL, json=nuevo)
 
-def asignar(tipo, df):
-
-    df_abiertos = df[df["Estado"] == "Abierto"]
-    carga = df_abiertos.groupby("Asignado a")["Puntos"].sum().to_dict()
-
-    for p in personas:
-        if p not in carga:
-            carga[p] = 0
-
-    asignado = min(carga, key=carga.get)
-
-    nuevo = {
-        "ID": len(df) + 1,
-        "Tipo": tipo,
-        "Puntos": pesos[tipo],
-        "Asignado a": asignado,
-        "Fecha": datetime.now(),
-        "Estado": "Abierto"
-    }
-
-    guardar_en_sheets(nuevo)
-
-    return asignado
+def cerrar_caso(id_caso):
+    requests.post(API_URL, json={"cerrar": id_caso})
 
 # ----------- LOGIN -----------
 
@@ -71,8 +43,10 @@ st.success("Acceso autorizado")
 # ----------- APP -----------
 
 st.set_page_config(page_title="Asignador de Casos", layout="wide")
+
 st.title("📊 Asignador Inteligente de Casos")
 
+# 🔥 Cargar datos SIEMPRE actualizado
 df = cargar_datos()
 
 # ----------- ASIGNAR -----------
@@ -81,13 +55,62 @@ st.subheader("➕ Asignar nuevo caso")
 tipo = st.selectbox("Tipo de caso", ["A", "B", "C"])
 
 if st.button("Asignar caso"):
-    persona = asignar(tipo, df)
-    st.session_state["ultimo_asignado"] = persona
+
+    df_abiertos = df[df["Estado"] == "Abierto"]
+    carga = df_abiertos.groupby("Asignado a")["Puntos"].sum().to_dict()
+
+    for p in personas:
+        if p not in carga:
+            carga[p] = 0
+
+    asignado = min(carga, key=carga.get)
+
+    nuevo = {
+        "ID": len(df) + 1,
+        "Tipo": tipo,
+        "Puntos": pesos[tipo],
+        "Asignado a": asignado,
+        "Fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "Estado": "Abierto"
+    }
+
+    guardar_caso(nuevo)
+
+    st.cache_data.clear()  # 🔥 fuerza refresco
+
+    st.session_state["ultimo_asignado"] = asignado
     st.rerun()
 
+# Mostrar resultado
 if "ultimo_asignado" in st.session_state:
     st.success(f"✅ Caso asignado a: {st.session_state['ultimo_asignado']}")
     del st.session_state["ultimo_asignado"]
+
+st.divider()
+
+# ----------- CERRAR -----------
+
+st.subheader("🔒 Cerrar caso")
+
+if not df.empty:
+    abiertos = df[df["Estado"] == "Abierto"]
+
+    if not abiertos.empty:
+        id_caso = st.selectbox("Selecciona ID", abiertos["ID"])
+
+        if st.button("Cerrar caso"):
+            cerrar_caso(id_caso)
+
+            st.cache_data.clear()  # 🔥 refresco
+
+            st.session_state["cerrado"] = id_caso
+            st.rerun()
+    else:
+        st.info("No hay casos abiertos")
+
+if "cerrado" in st.session_state:
+    st.success(f"🔒 Caso {st.session_state['cerrado']} cerrado")
+    del st.session_state["cerrado"]
 
 st.divider()
 
