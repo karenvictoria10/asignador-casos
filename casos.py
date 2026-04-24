@@ -68,7 +68,7 @@ def cerrar(id_caso):
 
 st.set_page_config(page_title="Asignador de Casos", layout="wide")
 
-st.title("📊 Asignador Inteligente de Casos")
+st.title("Asignador Inteligente de Casos")
 
 inicializar()
 df = cargar_datos()
