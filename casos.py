@@ -58,7 +58,8 @@ if usuario != "AMCABRER" or password != "asigca26":
     st.stop()
 
 st.success("Acceso autorizado")
-
+st.write("Correo en uso:")
+st.write(st.secrets["gcp_service_account"]["client_email"])
 # ----------- APP -----------
 
 st.set_page_config(page_title="Asignador de Casos", layout="wide")
