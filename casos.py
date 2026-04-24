@@ -1,23 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-
-# ----------- CONFIG -----------
-
-pesos = {"A": 1, "B": 2, "C": 3}
-personas = ["Fany", "Paola", "Valeria"]
-
-# 🔥 URL CSV DE TU SHEET
-URL = "https://docs.google.com/spreadsheets/d/15oJHLXONtcGoudA2LcmFi4bNMwGK8Dm2zGyV8fv5V-4/export?format=csv"
-
-# ----------- FUNCIONES -----------
-
-def leer_sheets():
-    try:
-        return pd.read_csv(URL)
-    except:
-        return pd.DataFrame(columns=["ID", "Tipo", "Puntos", "Asignado a", "Fecha", "Estado"])
-
+import os
 # ----------- LOGIN -----------
 
 st.title("🔐 Acceso")
@@ -31,19 +15,26 @@ if usuario != "AMCABRER" or password != "asigca26":
 
 st.success("Acceso autorizado")
 
-# ----------- APP -----------
+archivo = "casos_equipo.xlsx"
 
-st.set_page_config(page_title="Asignador de Casos", layout="wide")
-st.title("📊 Asignador Inteligente de Casos")
+pesos = {"A": 1, "B": 2, "C": 3}
+personas = ["Fany", "Paola", "Valeria"]
 
-df = leer_sheets()
+# ----------- FUNCIONES -----------
 
-# ----------- ASIGNAR -----------
+def inicializar():
+    if not os.path.exists(archivo):
+        df = pd.DataFrame(columns=["ID", "Tipo", "Puntos", "Asignado a", "Fecha", "Estado"])
+        df.to_excel(archivo, index=False)
 
-st.subheader("➕ Asignar nuevo caso")
-tipo = st.selectbox("Tipo de caso", ["A", "B", "C"])
+def cargar_datos():
+    return pd.read_excel(archivo)
 
-if st.button("Asignar caso"):
+def guardar_datos(df):
+    df.to_excel(archivo, index=False)
+
+def asignar(tipo):
+    df = cargar_datos()
 
     df_abiertos = df[df["Estado"] == "Abierto"]
     carga = df_abiertos.groupby("Asignado a")["Puntos"].sum().to_dict()
@@ -63,8 +54,63 @@ if st.button("Asignar caso"):
         "Estado": "Abierto"
     }
 
-    st.success(f"✅ Caso asignado a: {asignado}")
-    st.warning("⚠️ Este demo no guarda cambios en el Sheet automáticamente")
+    df = pd.concat([df, pd.DataFrame([nuevo])], ignore_index=True)
+    guardar_datos(df)
+
+    return asignado
+
+def cerrar(id_caso):
+    df = cargar_datos()
+    df.loc[df["ID"] == id_caso, "Estado"] = "Cerrado"
+    guardar_datos(df)
+
+# ----------- UI -----------
+
+st.set_page_config(page_title="Asignador de Casos", layout="wide")
+
+st.title("📊 Asignador Inteligente de Casos")
+
+inicializar()
+df = cargar_datos()
+
+# ----------- ASIGNAR -----------
+
+st.subheader("➕ Asignar nuevo caso")
+tipo = st.selectbox("Tipo de caso", ["A", "B", "C"])
+
+if st.button("Asignar caso"):
+    persona = asignar(tipo)
+    st.session_state["ultimo_asignado"] = persona
+    st.rerun()
+
+# Mostrar resultado después del rerun
+if "ultimo_asignado" in st.session_state:
+    st.success(f"✅ Caso asignado a: {st.session_state['ultimo_asignado']}")
+    del st.session_state["ultimo_asignado"]
+
+st.divider()
+
+# ----------- CERRAR -----------
+
+st.subheader("🔒 Cerrar caso")
+
+if not df.empty:
+    abiertos = df[df["Estado"] == "Abierto"]
+
+    if not abiertos.empty:
+        id_caso = st.selectbox("Selecciona ID", abiertos["ID"])
+
+        if st.button("Cerrar caso"):
+            cerrar(id_caso)
+            st.session_state["cerrado"] = id_caso
+            st.rerun()
+    else:
+        st.info("No hay casos abiertos")
+
+# Mostrar mensaje después del rerun
+if "cerrado" in st.session_state:
+    st.success(f"🔒 Caso {st.session_state['cerrado']} cerrado")
+    del st.session_state["cerrado"]
 
 st.divider()
 
@@ -95,6 +141,8 @@ if not df.empty:
     col1.metric("Fany", resumen["Fany"], semaforo(resumen["Fany"]))
     col2.metric("Paola", resumen["Paola"], semaforo(resumen["Paola"]))
     col3.metric("Valeria", resumen["Valeria"], semaforo(resumen["Valeria"]))
+
+    st.caption(f"Promedio actual: {round(promedio,2)} puntos")
 
     st.bar_chart(pd.Series(resumen))
 
