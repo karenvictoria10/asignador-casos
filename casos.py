@@ -17,7 +17,7 @@ def conectar_sheets():
         scopes=["https://www.googleapis.com/auth/spreadsheets"]
     )
     client = gspread.authorize(creds)
-    sheet = client.open_by_key("1437jjbt2HiSDMS7ZsTdtv4n0vRNpRUigfRTJKnvk2z0").sheet1
+    sheet = client.open_by_key("15oJHLXONtcGoudA2LcmFi4bNMwGK8Dm2zGyV8fv5V-4").sheet1
     return sheet
 
 def leer_sheets():
