@@ -8,7 +8,7 @@ import time
 
 SHEET_URL = "https://docs.google.com/spreadsheets/d/15oJHLXONtcGoudA2LcmFi4bNMwGK8Dm2zGyV8fv5V-4/export?format=csv"
 
-API_URL = "https://script.google.com/macros/s/AKfycbzqlk57Uwxo8GTW1XMFrZoAxIOczayYlO02TcV2tdaSoMpGtVu2h-kMB0SPAK1HxcsEJw/exec"
+API_URL = "https://script.google.com/macros/s/AKfycbyC7WcT03EnbIwfeeHlpAl68cDMFsTEW0c2_JOlRI09HG6zJdCfw-SXAYVkiBJm5gDG/exec"
 
 pesos = {"A": 1, "B": 2, "C": 3}
 personas = ["Fany", "Paola", "Valeria"]
