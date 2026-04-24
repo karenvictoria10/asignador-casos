@@ -1,7 +1,51 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-import os
+import gspread
+from google.oauth2.service_account import Credentials
+
+# ----------- CONFIG -----------
+
+pesos = {"A": 1, "B": 2, "C": 3}
+personas = ["Fany", "Paola", "Valeria"]
+
+# ----------- CONEXIÓN GOOGLE SHEETS -----------
+
+def conectar_sheets():
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=["https://www.googleapis.com/auth/spreadsheets"]
+    )
+    client = gspread.authorize(creds)
+    sheet = client.open("Asignador Casos").sheet1
+    return sheet
+
+def leer_sheets():
+    sheet = conectar_sheets()
+    data = sheet.get_all_records()
+    return pd.DataFrame(data)
+
+def guardar_en_sheets(nuevo):
+    sheet = conectar_sheets()
+    sheet.append_row([
+        nuevo["ID"],
+        nuevo["Tipo"],
+        nuevo["Puntos"],
+        nuevo["Asignado a"],
+        str(nuevo["Fecha"]),
+        nuevo["Estado"]
+    ])
+
+def cerrar_caso(id_caso):
+    sheet = conectar_sheets()
+    data = sheet.get_all_records()
+    df = pd.DataFrame(data)
+
+    fila = df[df["ID"] == id_caso].index
+
+    if not fila.empty:
+        sheet.update_cell(fila[0] + 2, 6, "Cerrado")
+
 # ----------- LOGIN -----------
 
 st.title("🔐 Acceso")
@@ -15,26 +59,24 @@ if usuario != "AMCABRER" or password != "asigca26":
 
 st.success("Acceso autorizado")
 
-archivo = "casos_equipo.xlsx"
+# ----------- APP -----------
 
-pesos = {"A": 1, "B": 2, "C": 3}
-personas = ["Fany", "Paola", "Valeria"]
+st.set_page_config(page_title="Asignador de Casos", layout="wide")
+st.title("📊 Asignador Inteligente de Casos")
 
-# ----------- FUNCIONES -----------
+# ----------- DATOS -----------
 
-def inicializar():
-    if not os.path.exists(archivo):
-        df = pd.DataFrame(columns=["ID", "Tipo", "Puntos", "Asignado a", "Fecha", "Estado"])
-        df.to_excel(archivo, index=False)
+df = leer_sheets()
 
-def cargar_datos():
-    return pd.read_excel(archivo)
+if df.empty:
+    df = pd.DataFrame(columns=["ID", "Tipo", "Puntos", "Asignado a", "Fecha", "Estado"])
 
-def guardar_datos(df):
-    df.to_excel(archivo, index=False)
+# ----------- ASIGNAR -----------
 
-def asignar(tipo):
-    df = cargar_datos()
+st.subheader("➕ Asignar nuevo caso")
+tipo = st.selectbox("Tipo de caso", ["A", "B", "C"])
+
+if st.button("Asignar caso"):
 
     df_abiertos = df[df["Estado"] == "Abierto"]
     carga = df_abiertos.groupby("Asignado a")["Puntos"].sum().to_dict()
@@ -54,36 +96,12 @@ def asignar(tipo):
         "Estado": "Abierto"
     }
 
-    df = pd.concat([df, pd.DataFrame([nuevo])], ignore_index=True)
-    guardar_datos(df)
+    guardar_en_sheets(nuevo)
 
-    return asignado
-
-def cerrar(id_caso):
-    df = cargar_datos()
-    df.loc[df["ID"] == id_caso, "Estado"] = "Cerrado"
-    guardar_datos(df)
-
-# ----------- UI -----------
-
-st.set_page_config(page_title="Asignador de Casos", layout="wide")
-
-st.title("📊 Asignador Inteligente de Casos")
-
-inicializar()
-df = cargar_datos()
-
-# ----------- ASIGNAR -----------
-
-st.subheader("➕ Asignar nuevo caso")
-tipo = st.selectbox("Tipo de caso", ["A", "B", "C"])
-
-if st.button("Asignar caso"):
-    persona = asignar(tipo)
-    st.session_state["ultimo_asignado"] = persona
+    st.session_state["ultimo_asignado"] = asignado
     st.rerun()
 
-# Mostrar resultado después del rerun
+# Mostrar resultado
 if "ultimo_asignado" in st.session_state:
     st.success(f"✅ Caso asignado a: {st.session_state['ultimo_asignado']}")
     del st.session_state["ultimo_asignado"]
@@ -101,13 +119,12 @@ if not df.empty:
         id_caso = st.selectbox("Selecciona ID", abiertos["ID"])
 
         if st.button("Cerrar caso"):
-            cerrar(id_caso)
+            cerrar_caso(id_caso)
             st.session_state["cerrado"] = id_caso
             st.rerun()
     else:
         st.info("No hay casos abiertos")
 
-# Mostrar mensaje después del rerun
 if "cerrado" in st.session_state:
     st.success(f"🔒 Caso {st.session_state['cerrado']} cerrado")
     del st.session_state["cerrado"]
