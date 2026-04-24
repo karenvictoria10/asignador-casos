@@ -9,7 +9,7 @@ st.title("🔐 Acceso")
 usuario = st.text_input("Usuario")
 password = st.text_input("Contraseña", type="password")
 
-if usuario != "AMCABRER" or password != "asigca26":
+if usuario != "ASIGNADOR" or password != "Telmex.123":
     st.warning("Acceso restringido")
     st.stop()
 
