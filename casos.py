@@ -113,7 +113,7 @@ if not df.empty:
         if st.button("Cerrar caso"):
             cerrar_caso(id_caso)
 
-            time.sleep(2)  # 🔥 espera
+            time.sleep(1)  # 🔥 espera
 
             st.cache_data.clear()
 
